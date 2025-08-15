@@ -6,6 +6,12 @@ cc_binary(
         "@xla//xla/pjrt/c:pjrt_c_api_wrapper_impl",
         "@xla//xla/pjrt:pjrt_client",
         "@xla//xla/tsl/platform:status",
+        "@llvm-project//mlir:AffineToStandard",
+        "@llvm-project//mlir:ArithToLLVM",
+        "@llvm-project//mlir:ControlFlowToLLVM",
+        "@llvm-project//mlir:FuncToLLVM",
+        "@llvm-project//mlir:LLVMCommonConversion",
+        "@llvm-project//mlir:SCFToControlFlow",
     ],
     linkshared = True,
 )

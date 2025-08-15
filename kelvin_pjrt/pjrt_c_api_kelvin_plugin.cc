@@ -5,7 +5,16 @@
 #include "xla/pjrt/pjrt_client.h"
 #include "xla/tsl/platform/status.h"
 
-
+#include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
+#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
+#include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
+#include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
+#include "mlir/Conversion/LLVMCommon/TypeConverter.h"
+#include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/Transforms/DialectConversion.h"
 
 #include <iostream>
 
@@ -335,6 +344,28 @@ class KelvinPjRtClient : public xla::PjRtClient {
     std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
 
     module.dump();
+
+    auto& context = *(module.getContext());
+
+    mlir::ConversionTarget target(context);
+    target.addLegalDialect<mlir::LLVM::LLVMDialect>();
+    target.addLegalOp<mlir::ModuleOp>();
+
+    mlir::LLVMTypeConverter typeConverter(&context);
+
+    mlir::RewritePatternSet patterns(&context);
+    mlir::populateAffineToStdConversionPatterns(patterns);
+    mlir::populateSCFToControlFlowConversionPatterns(patterns);
+    mlir::arith::populateArithToLLVMConversionPatterns(typeConverter, patterns);
+    mlir::populateFuncToLLVMConversionPatterns(typeConverter, patterns);
+    mlir::cf::populateControlFlowToLLVMConversionPatterns(typeConverter,
+                                                          patterns);
+
+    auto compilation_result = mlir::applyFullConversion(module, target,
+                                                        std::move(patterns));
+    if (mlir::failed(compilation_result)) {
+      std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+    }
 
     return absl::UnimplementedError("Unimplemented Compile with MLIR Module");
   }
