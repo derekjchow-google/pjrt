@@ -14,6 +14,7 @@
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/DialectConversion.h"
 
 #include <iostream>
@@ -347,25 +348,34 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
     auto& context = *(module.getContext());
 
-    mlir::ConversionTarget target(context);
-    target.addLegalDialect<mlir::LLVM::LLVMDialect>();
-    target.addLegalOp<mlir::ModuleOp>();
+    // Add headers and dependencies for me
+    mlir::PassManager pm(&context);
+    pm.addPass(mlir::createInlinerPass());
+    pm.addPass(stablehlo::createStablehloLegalizeToLinalgPass());
+    pm.addPass(mlir::createLinalgBufferizePass());
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgTilingPass());
+    pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgBufferizePass());
+    // You can stop here
 
-    mlir::LLVMTypeConverter typeConverter(&context);
+    // mlir::ConversionTarget target(context);
+    // target.addLegalDialect<mlir::LLVM::LLVMDialect>();
+    // target.addLegalOp<mlir::ModuleOp>();
 
-    mlir::RewritePatternSet patterns(&context);
-    mlir::populateAffineToStdConversionPatterns(patterns);
-    mlir::populateSCFToControlFlowConversionPatterns(patterns);
-    mlir::arith::populateArithToLLVMConversionPatterns(typeConverter, patterns);
-    mlir::populateFuncToLLVMConversionPatterns(typeConverter, patterns);
-    mlir::cf::populateControlFlowToLLVMConversionPatterns(typeConverter,
-                                                          patterns);
+    // mlir::LLVMTypeConverter typeConverter(&context);
 
-    auto compilation_result = mlir::applyFullConversion(module, target,
-                                                        std::move(patterns));
-    if (mlir::failed(compilation_result)) {
-      std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
-    }
+    // mlir::RewritePatternSet patterns(&context);
+    // mlir::populateAffineToStdConversionPatterns(patterns);
+    // mlir::populateSCFToControlFlowConversionPatterns(patterns);
+    // mlir::arith::populateArithToLLVMConversionPatterns(typeConverter, patterns);
+    // mlir::populateFuncToLLVMConversionPatterns(typeConverter, patterns);
+    // mlir::cf::populateControlFlowToLLVMConversionPatterns(typeConverter,
+    //                                                       patterns);
+
+    // auto compilation_result = mlir::applyFullConversion(module, target,
+    //                                                     std::move(patterns));
+    // if (mlir::failed(compilation_result)) {
+    //   std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+    // }
 
     return absl::UnimplementedError("Unimplemented Compile with MLIR Module");
   }
