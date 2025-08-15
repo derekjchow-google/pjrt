@@ -7,6 +7,8 @@
 
 import jax
 
+jax.config.update("jax_platforms", "kelvin")
+
 @jax.jit
 def add(x, y):
   return x + y
