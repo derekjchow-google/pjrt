@@ -18,10 +18,78 @@ namespace kelvin {
 
 class KelvinPjRtClient;
 
+class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
+ public:
+  KelvinPjRtDeviceDescription(int id, int process_index)
+    : id_(id),
+      process_index_(process_index),
+      device_kind_("KelvinV2"),
+      attributes_({}) {}
+
+  ~KelvinPjRtDeviceDescription() override = default;
+
+  int id() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return id_;
+  }
+
+  int process_index() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return process_index_;
+  }
+
+  absl::string_view device_kind() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return device_kind_;
+  }
+
+  absl::string_view DebugString() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    // TODO(derekjchow): Implement more diligently
+    return "KelvinPjRtDeviceDescription debug device";
+  }
+
+  absl::string_view ToString() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    // TODO(derekjchow): Add in id.
+    return "KelvinPjRtDevice(id=)";
+  }
+
+  // Returns vendor specific attributes about the device. For example the model
+  // number of a GPU, or the mesh coordinates of a TPU device. The returned
+  // reference will remain valid for the lifetime of the PjRtDevice.
+  const absl::flat_hash_map<std::string, xla::PjRtDeviceAttribute>&
+  Attributes() const override {
+    return attributes_;
+  }
+
+  // Returns all memory spaces attached to this device.
+  // The memory spaces are in no particular order.
+  absl::Span<const xla::PjRtMemorySpaceDescription* const> memory_spaces()
+      const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return {};
+  }
+
+  // Returns the default memory space attached to this device.
+  absl::StatusOr<const xla::PjRtMemorySpaceDescription*>
+  default_memory_space() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("default_memory_space Not implemented.");
+  }
+
+ public:
+  const int id_;
+  const int process_index_;
+  const std::string device_kind_;
+  absl::flat_hash_map<std::string, xla::PjRtDeviceAttribute> attributes_;
+};
+
 class KelvinPjRtDevice : public xla::PjRtDevice {
  public:
   explicit KelvinPjRtDevice(KelvinPjRtClient* client)
-    : client_(client) {}
+    : client_(client),
+      description_(42, 0) {}
 
   ~KelvinPjRtDevice() override = default;
 
@@ -37,8 +105,7 @@ class KelvinPjRtDevice : public xla::PjRtDevice {
 
   const xla::PjRtDeviceDescription& description() const override {
     std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    LOG(FATAL) << "PjRtDeviceDescription not available (must override "
-                  "PjRtDevice::description).";
+    return description_;
   }
 
   ABSL_DEPRECATED("Use global_device_id() instead")
@@ -139,6 +206,7 @@ class KelvinPjRtDevice : public xla::PjRtDevice {
 
  private:
   KelvinPjRtClient* const client_;
+  KelvinPjRtDeviceDescription description_;
 };
 
 class KelvinPjRtClient : public xla::PjRtClient {
@@ -159,7 +227,7 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
   int addressable_device_count() const override {
     std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return 0;
+    return 1;
   }
 
   absl::Span<xla::PjRtDevice* const> devices() const override {
@@ -174,14 +242,25 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
   absl::StatusOr<xla::PjRtDevice*> LookupDevice(
       xla::PjRtGlobalDeviceId global_device_id) const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Unimplemented");
+    std::cout << "Tuturu~ LookupDevice " << global_device_id << std::endl;
+    for (xla::PjRtDevice* device : devices()) {
+      if (device->global_device_id() == global_device_id) {
+        return device;
+      }
+    }
+    return absl::UnimplementedError("Unimplemented LookupDevice");
   }
 
   absl::StatusOr<xla::PjRtDevice*> LookupAddressableDevice(
       xla::PjRtLocalDeviceId local_device_id) const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Unimplemented");
+    std::cout << "Tuturu~ LookupAddressableDevice "
+              << local_device_id << std::endl;
+    for (xla::PjRtDevice* device : addressable_devices()) {
+      if (device->local_device_id() == local_device_id) {
+        return device;
+      }
+    }
+    return absl::UnimplementedError("Unimplemented LookupAddressableDevice");
   }
 
   void UpdateGlobalProcessInfo(
@@ -254,7 +333,28 @@ class KelvinPjRtClient : public xla::PjRtClient {
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>> Compile(
       mlir::ModuleOp module, xla::CompileOptions options) override {
     std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Unimplemented");
+
+    module.dump();
+
+    return absl::UnimplementedError("Unimplemented Compile with MLIR Module");
+  }
+  absl::StatusOr<std::unique_ptr<xla::PjRtLoadedExecutable>> CompileAndLoad(
+      mlir::ModuleOp module, xla::CompileOptions options) override {
+    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
+    auto compilation_result = Compile(module, options);
+    if (!compilation_result.ok()) {
+      return compilation_result.status();
+    }
+
+    xla::LoadOptions load_options;
+    return Load(std::move(compilation_result.value()), load_options);
+  }
+
+  absl::StatusOr<std::unique_ptr<xla::PjRtLoadedExecutable>> Load(
+      std::unique_ptr<xla::PjRtExecutable> executable,
+      const xla::LoadOptions& load_options) {
+    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
+    return absl::UnimplementedError("Loading executable not supported.");
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>>
