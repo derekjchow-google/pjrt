@@ -16,7 +16,163 @@ class PjRtBuffer;
 
 namespace kelvin {
 
-// TODO(derekjchow): Implement a "device".
+class KelvinPjRtClient;
+
+class KelvinPjRtDevice : public xla::PjRtDevice {
+ public:
+  explicit KelvinPjRtDevice(KelvinPjRtClient* client)
+    : client_(client) {}
+
+  ~PjRtDevice() override = default;
+
+  // Return the client that owns this device.
+  virtual PjRtClient* client() const = 0;
+
+  // Whether client can issue command to this device.
+  virtual bool IsAddressable() const = 0;
+
+  virtual const PjRtDeviceDescription& description() const {
+    LOG(FATAL) << "PjRtDeviceDescription not available (must override "
+                  "PjRtDevice::description).";
+  }
+
+  // The ID of this device. IDs are unique among devices of this type
+  // (e.g. CPUs, GPUs). On multi-host platforms, this will be unique across all
+  // hosts' devices.  This is the ID that should be used in a DeviceAssignment.
+  ABSL_DEPRECATED("Use global_device_id() instead")
+  virtual int id() const { return global_device_id().value(); }
+
+  // There are several different IDs for a PJRT device.
+  //
+  // - global_device_id: The logical global device ID. This is unique among
+  // devices of this type (e.g. CPUs, GPUs). On multi-host platforms, this will
+  // be unique across all hosts' devices.  This is the ID that should be used in
+  // a DeviceAssignment.
+  //
+  // - local_device_id: The logical local device ID. This will be used to look
+  // up an addressable device local to a given client. It is -1 if undefined.
+  //
+  // - local_hardware_id: The physical local device ID, e.g., the CUDA device
+  // number. Multiple PJRT devices can have the same local_hardware_id if
+  // these PJRT devices share the same physical device. This is useful for
+  // identifying which physical device when interacting with non-JAX code. In
+  // general, not guaranteed to be dense, and -1 if undefined.
+
+  // TODO(b/314368788): Remove `id()` and replace it with this function.
+  virtual PjRtGlobalDeviceId global_device_id() const {
+    return PjRtGlobalDeviceId(description().id());
+  }
+
+  virtual PjRtLocalDeviceId local_device_id() const {
+    // By default, local_device_id is the same as local_hardware_id when there
+    // is only one PJRT device on a physical device.
+    return PjRtLocalDeviceId(local_hardware_id().value());
+  }
+
+  // Opaque hardware ID, e.g., the CUDA device number, useful for identifying
+  // which GPU when interacting with non-JAX code. In general, not guaranteed to
+  // be dense, and -1 if undefined.
+  virtual PjRtLocalHardwareId local_hardware_id() const = 0;
+
+  // The index of the process that this device belongs to, i.e. is addressable
+  // from. This is not always identical to PjRtClient::process_index() in a
+  // multi-process setting, where each client can see devices from all
+  // processes, but only a subset of them are addressable and have the same
+  // process_index as the client.
+  virtual int process_index() const { return description().process_index(); }
+
+  // A vendor-dependent string that uniquely identifies the kind of device,
+  // e.g., "Tesla V100-SXM2-16GB". May be used to determine whether two GPUs are
+  // compatible compilation.
+  virtual absl::string_view device_kind() const {
+    return description().device_kind();
+  }
+
+  // Debug string suitable for logging when errors occur. Should be verbose
+  // enough to describe the current device unambiguously.
+  virtual absl::string_view DebugString() const {
+    return description().DebugString();
+  }
+
+  // Debug string suitable for reading by end users, should be reasonably terse,
+  // for example: "CpuDevice(id=0)".
+  virtual absl::string_view ToString() const {
+    return description().ToString();
+  }
+
+  // Returns vendor specific attributes about the device. For example the model
+  // number of a GPU, or the mesh coordinates of a TPU device. The returned
+  // reference will remain valid for the lifetime of the PjRtDevice.
+  virtual const absl::flat_hash_map<std::string, PjRtDeviceAttribute>&
+  Attributes() const {
+    return description().Attributes();
+  }
+
+  // Returns a scoped event that the caller uses to tell the PjRtClient that
+  // there is asynchronous work happening that depends on activity on the
+  // PjRtDevice. See comment on class definition in pjrt_future.h.
+  //
+  // Only some PjRtDevice implementations support ScopedAsyncTrackingEvent, and
+  // those that do not will return nullptr.
+  virtual std::unique_ptr<ScopedAsyncTrackingEvent> CreateAsyncTrackingEvent(
+      absl::string_view description) const = 0;
+
+  // Transfer the given literal to the infeed queue.
+  virtual absl::Status TransferToInfeed(const LiteralSlice& literal) = 0;
+
+  // Transfer and return a value of the given shape from the outfeed queue.
+  virtual absl::Status TransferFromOutfeed(MutableBorrowingLiteral literal) = 0;
+
+  // Returns allocator stats for the device. Only some PjRtDevice
+  // implementations support allocator_stats, and those that do not will return
+  // an Unimplemented error.
+  virtual absl::StatusOr<tsl::AllocatorStats> GetAllocatorStats() const {
+    return absl::UnimplementedError("GetAllocatorStats is not supported");
+  }
+
+  // Returns all memory spaces attached to this device.
+  // The memory spaces are in no particular order.
+  virtual absl::Span<PjRtMemorySpace* const> memory_spaces() const = 0;
+
+  // Returns the default memory space attached to this device.
+  virtual absl::StatusOr<PjRtMemorySpace*> default_memory_space() const = 0;
+
+  virtual absl::StatusOr<PjRtMemorySpace*> memory_space_by_kind(
+      absl::string_view memory_space_kind) const {
+    return absl::UnimplementedError("memory_space_by_kind not implemented");
+  }
+
+  // Returns a platform-specific stream handle that should be used to track when
+  // an externally-managed buffer is ready to use on this device. This is
+  // intended to support dlpack on GPU and is not expected to be implemented for
+  // all hardware platforms.
+  virtual absl::StatusOr<std::intptr_t> GetStreamForExternalReadyEvents()
+      const {
+    return absl::UnimplementedError(
+        "PjRtDevice::GetStreamForExternalReadyEvents only implemented for "
+        "GPU");
+  }
+
+  // Experimental: Poisons the earliest execution on this device with given
+  // launch_id if it's not finished yet, i.e. makes its output buffers error.
+  //
+  // Returns true if the output buffers have been successfully poisoned.
+  //
+  // Returns false if the output buffers were not successfully poisoned because
+  // launch_id is not in the list of executions that have not yet completed.
+  // This may happen either because the execution corresponding to launch_id has
+  // already completed, or because an incorrect launch_id was supplied.
+  //
+  // Returns error otherwise, including in the case that poisoning is not
+  // implemented by this client.
+  virtual absl::StatusOr<bool> PoisonExecution(int32_t launch_id,
+                                               absl::Status error) {
+    return absl::UnimplementedError("PoisonExecution is not supported");
+  }
+
+ private:
+  KelvinPjRtClient* const client_;
+};
 
 class KelvinPjRtClient : public xla::PjRtClient {
  public:
