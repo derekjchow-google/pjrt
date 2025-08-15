@@ -12,10 +12,20 @@
 #include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/Passes.h"
+#include "stablehlo/dialect/StablehloOps.h"
+#include "stablehlo/transforms/Passes.h"
+#include "xla/mlir_hlo/transforms/passes.h"
+
+
+#include "stablehlo/conversions/linalg/transforms/Passes.h"
+
 
 #include <iostream>
 
@@ -351,11 +361,19 @@ class KelvinPjRtClient : public xla::PjRtClient {
     // Add headers and dependencies for me
     mlir::PassManager pm(&context);
     pm.addPass(mlir::createInlinerPass());
-    pm.addPass(stablehlo::createStablehloLegalizeToLinalgPass());
-    pm.addPass(mlir::createLinalgBufferizePass());
-    pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgTilingPass());
-    pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgBufferizePass());
+    pm.addPass(mlir::stablehlo::createStablehloLegalizeToLinalgPass());
+    // pm.addPass(mlir::createLinalgBufferizePass());
+    // pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgTilingPass());
+    // pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgBufferizePass());
     // You can stop here
+
+    if (mlir::failed(pm.run(module))) {
+      std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+      return absl::UnimplementedError(
+          "Compilation failure in Compile with MLIR Module");
+    }
+    std::cout << "Tuturu~ " << __LINE__ << std::endl;
+    module.dump();
 
     // mlir::ConversionTarget target(context);
     // target.addLegalDialect<mlir::LLVM::LLVMDialect>();
