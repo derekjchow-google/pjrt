@@ -11,8 +11,8 @@ import numpy as np
 jax.config.update("jax_platforms", "kelvin")
 
 @jax.jit
-def add(x, y):
+def jitted_add(x, y):
   return x + y
 
-result = add(np.array([4, 5]), np.array([6, 7]))
+result = jitted_add(np.arange(256), np.arange(256))
 print(result)

@@ -12,6 +12,9 @@
 #include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
+#include "mlir/Dialect/Bufferization/Transforms/Bufferize.h"
+#include "mlir/Dialect/Bufferization/Transforms/OneShotAnalysis.h"
+#include "mlir/Dialect/Bufferization/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
@@ -23,6 +26,7 @@
 #include "stablehlo/transforms/Passes.h"
 #include "xla/mlir_hlo/transforms/passes.h"
 
+#include "xla/mlir_hlo/mhlo/transforms/passes.h"
 
 #include "stablehlo/conversions/linalg/transforms/Passes.h"
 
@@ -358,22 +362,106 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
     auto& context = *(module.getContext());
 
-    // Add headers and dependencies for me
-    mlir::PassManager pm(&context);
-    pm.addPass(mlir::createInlinerPass());
-    pm.addPass(mlir::stablehlo::createStablehloLegalizeToLinalgPass());
-    // pm.addPass(mlir::createLinalgBufferizePass());
-    // pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgTilingPass());
-    // pm.addNestedPass<mlir::func::FuncOp>(mlir::createLinalgBufferizePass());
-    // You can stop here
+    {
+      mlir::PassManager pm(&context);
+      pm.addPass(mlir::createInlinerPass());
+      // pm.addPass(mlir::stablehlo::createStablehloLegalizeToLinalgPass());
+      pm.addPass(mlir::mhlo::createStablehloLegalizeToHloPass());
+      pm.addNestedPass<mlir::func::FuncOp>(
+          mlir::mhlo::createLegalizeHloToLinalgPass(true));
+      // pm.addPass(std::make_unique<LowerTagRegionsPass>());
 
-    if (mlir::failed(pm.run(module))) {
+      if (mlir::failed(pm.run(module))) {
+        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+        return absl::UnimplementedError(
+            "Compilation failure in Compile with MLIR Module");
+      }
+      std::cout << "Tuturu~ " << __LINE__ << std::endl;
+      module.dump();
+    }
+
+    // TODO(derekjchow): Copy AddTransformInterpreterPasses from jasc?
+
+
+    {
+      mlir::PassManager pm(&context);
+
+      pm.addPass(
+          mlir::bufferization::createEmptyTensorToAllocTensorPass());
+      mlir::bufferization::OneShotBufferizationOptions bufferization_options;
+      bufferization_options.setFunctionBoundaryTypeConversion(
+          mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
+      pm.addPass(mlir::createCSEPass());
+      bufferization_options.bufferizeFunctionBoundaries = true;
+      pm.addPass(CreateOneShotBufferizePass(bufferization_options));
+
+      if (mlir::failed(pm.run(module))) {
+        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+        return absl::UnimplementedError(
+            "Compilation failure in Compile with MLIR Module");
+      }
+      std::cout << "Tuturu~ " << __LINE__ << std::endl;
+      module.dump();
+    }
+
+
+
+    {
+      mlir::PassManager pm(&context);
+
+      pm.addPass(
+          mlir::bufferization::createEmptyTensorToAllocTensorPass());
+      // pm.addNestedPass<mlir::func::FuncOp>(
+      //     mlir::createLinalgDetensorizePass());
+      pm.addPass(
+          mlir::bufferization::createEmptyTensorToAllocTensorPass());
+      pm.addPass(mlir::createCSEPass());
+
+      if (mlir::failed(pm.run(module))) {
+        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+        return absl::UnimplementedError(
+            "Compilation failure in Compile with MLIR Module");
+      }
+      std::cout << "Tuturu~ " << __LINE__ << std::endl;
+      module.dump();
+    }
+
+
+    {
+      mlir::PassManager pm(&context);
+      mlir::bufferization::OneShotBufferizePassOptions bufferization_options;
+      bufferization_options.bufferizeFunctionBoundaries = true;
+      pm.addPass(mlir::bufferization::createOneShotBufferizePass(
+          bufferization_options));
+
+
+
+      if (mlir::failed(pm.run(module))) {
+        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+        return absl::UnimplementedError(
+            "Compilation failure in Compile with MLIR Module");
+      }
+      std::cout << "Tuturu~ " << __LINE__ << std::endl;
+      module.dump();
+    }
+
+
+    mlir::PassManager pm2(&context);
+    // pm2.addPass(mlir::bufferization::createLinalgComprehensiveModuleBufferizePass());
+    pm2.addNestedPass<mlir::func::FuncOp>(mlir::createConvertLinalgToLoopsPass());
+    // pm2.addNestedPass<mlir::func::FuncOp>(mlir::createConvertSCFToControlFlowPass());
+    pm2.addNestedPass<mlir::func::FuncOp>(mlir::createSCFToControlFlowPass());
+    // pm2.addPass(mlir::createLowerToLLVMPass());
+    // pm2.addPass(mlir::createReconcileUnrealizedCastsPass());
+    if (mlir::failed(pm2.run(module))) {
       std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
       return absl::UnimplementedError(
           "Compilation failure in Compile with MLIR Module");
     }
     std::cout << "Tuturu~ " << __LINE__ << std::endl;
     module.dump();
+
+
 
     // mlir::ConversionTarget target(context);
     // target.addLegalDialect<mlir::LLVM::LLVMDialect>();
