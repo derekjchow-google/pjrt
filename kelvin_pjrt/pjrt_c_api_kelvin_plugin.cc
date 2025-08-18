@@ -78,6 +78,115 @@ namespace kelvin {
 
 class KelvinPjRtClient;
 
+class KelvinPjRtExecutable : public xla::PjRtExecutable {
+ public:
+  KelvinPjRtExecutable(std::string name, std::string object_code)
+      : name_(std::move(name)),
+        object_code_(std::move(object_code)) {}
+
+  ~KelvinPjRtExecutable() override = default;
+
+  int num_replicas() const override { return 1; }
+
+  int num_partitions() const override { return 1; }
+
+  int64_t SizeOfGeneratedCodeInBytes() const override {
+    return object_code_.size();
+  }
+
+  absl::string_view name() const override { return name_; }
+
+  absl::StatusOr<std::vector<std::shared_ptr<xla::HloModule>>> GetHloModules()
+      const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetHloModules Not implemented.");
+  }
+
+  absl::StatusOr<std::vector<xla::Shape>> GetOutputShapes() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetOutputShapes Not implemented.");
+  }
+
+  absl::StatusOr<std::vector<std::vector<xla::PrimitiveType>>>
+  GetOutputElementTypes() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetOutputElementTypes Not implemented.");
+  }
+
+  absl::StatusOr<std::vector<std::vector<xla::DimensionVector>>>
+  GetOutputDimensions() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetOutputDimensions Not implemented.");
+  }
+
+  absl::StatusOr<std::vector<std::shared_ptr<const xla::PjRtLayout>>>
+  GetParameterLayouts() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetParameterLayouts is not implemented.");
+  }
+
+  absl::StatusOr<std::vector<std::shared_ptr<const xla::PjRtLayout>>>
+  GetOutputLayouts() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetOutputLayouts is not implemented.");
+  }
+
+  absl::StatusOr<std::vector<std::vector<absl::string_view>>>
+  GetOutputMemoryKinds() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetOutputMemoryKinds is not implemented.");
+  }
+
+  std::optional<std::vector<xla::OpSharding>> GetParameterShardings() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return std::nullopt;
+  }
+
+  std::optional<std::vector<xla::OpSharding>> GetOutputShardings() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return std::nullopt;
+  }
+
+  // Return memory stats that allow callers to estimate device memory usage
+  // when running this executable.
+  absl::StatusOr<xla::CompiledMemoryStats> GetCompiledMemoryStats() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError(
+        "GetCompiledMemoryStats is not implemented.");
+  }
+
+  // Returns named values for cost properties of this executable (such as
+  // operations, size of input/outputs, and run time estimate). Properties may
+  // differ for different platforms.
+  absl::StatusOr<absl::flat_hash_map<std::string, xla::PjRtValueType>>
+  GetCostAnalysis() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetCostAnalysis is not implemented.");
+  }
+
+  // Serialize this executable into a string and return the value.
+  absl::StatusOr<std::string> SerializeExecutable() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("SerializeExecutable is not implemented.");
+  }
+
+  // Return a fingerprint of this executable.
+  absl::StatusOr<std::string> FingerprintExecutable() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError(
+        "FingerprintExecutable is not implemented.");
+  }
+
+  absl::StatusOr<struct xla::CompileOptions> GetCompileOptions() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("GetCompileOptions is not implemented.");
+  }
+
+ private:
+  const std::string name_;
+  const std::string object_code_;
+};
+
 class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
  public:
   KelvinPjRtDeviceDescription(int id, int process_index)
@@ -506,15 +615,19 @@ class KelvinPjRtClient : public xla::PjRtClient {
       pass.run(*llvm_module);
     }
 
-    std::cout << "Tuturu~ " << __LINE__ << " " << object_file_content.size() << std::endl;
+    // std::ofstream elf_file("/usr/local/google/home/derekjchow/tuturu.elf", std::ios::binary);
+    // if (elf_file) {
+    //   elf_file.write(object_file_content.c_str(), object_file_content.size());
+    //   elf_file.close();
+    //   std::cout << "Tuturu~ ELF file written to /usr/local/google/home/derekjchow/tuturu.elf" << std::endl;
+    // } else {
+    //   std::cerr << "Tuturu~ Error opening file for writing." << std::endl;
+    // }
 
-    std::ofstream elf_file("/usr/local/google/home/derekjchow/tuturu.elf", std::ios::binary);
-    if (elf_file) {
-      elf_file.write(object_file_content.c_str(), object_file_content.size());
-      elf_file.close();
-      std::cout << "Tuturu~ ELF file written to /usr/local/google/home/derekjchow/tuturu.elf" << std::endl;
-    } else {
-      std::cerr << "Tuturu~ Error opening file for writing." << std::endl;
+    auto name = module.getName();
+    if (name) {
+      return std::make_unique<KelvinPjRtExecutable>(
+          name.value().str(), std::move(object_file_content));
     }
 
     return absl::UnimplementedError("Unimplemented Compile with MLIR Module");
