@@ -1,6 +1,7 @@
 workspace(name = "kelvin_pjrt")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository")
 
 http_archive(
     name = "xla",
@@ -10,6 +11,9 @@ http_archive(
     strip_prefix = "xla-3d25fed5571304e446903bc00e4f457b2b0f73dc",
     sha256 = "9efd7d303edab24fd8552d602045722f462870d17b888fa607e9b7143b9e0515",
 )
+
+# local_repository(name="xla", path="xla")
+
 
 load("@xla//:workspace4.bzl", "xla_workspace4")
 

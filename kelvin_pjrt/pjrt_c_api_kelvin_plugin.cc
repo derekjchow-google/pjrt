@@ -6,6 +6,8 @@
 #include "xla/tsl/platform/status.h"
 
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
+#include "mlir/Conversion/BufferizationToMemRef/BufferizationToMemRef.h"
+#include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
 #include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
 #include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
@@ -15,9 +17,24 @@
 #include "mlir/Dialect/Bufferization/Transforms/Bufferize.h"
 #include "mlir/Dialect/Bufferization/Transforms/OneShotAnalysis.h"
 #include "mlir/Dialect/Bufferization/Transforms/Passes.h"
+#include "mlir/Dialect/Bufferization/Pipelines/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/MemRef/Transforms/Passes.h"
+
+
+
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
+#include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
+#include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
+
+
+#include "mlir/ExecutionEngine/OptUtils.h"
+
+
+#include "mlir/InitAllDialects.h"
+
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -30,7 +47,26 @@
 
 #include "stablehlo/conversions/linalg/transforms/Passes.h"
 
+#include "mlir/Target/LLVMIR/Export.h"
+// #include "mlir/Target/LLVMIR/LLVMTranslationDialectInterface.h"
+// #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 
+
+#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
+
+
+
+
+
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+
+#include <fstream>
 #include <iostream>
 
 namespace xla {
@@ -357,87 +393,58 @@ class KelvinPjRtClient : public xla::PjRtClient {
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>> Compile(
       mlir::ModuleOp module, xla::CompileOptions options) override {
     std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-
     module.dump();
 
     auto& context = *(module.getContext());
-
-    {
-      mlir::PassManager pm(&context);
-      pm.addPass(mlir::createInlinerPass());
-      // pm.addPass(mlir::stablehlo::createStablehloLegalizeToLinalgPass());
-      pm.addPass(mlir::mhlo::createStablehloLegalizeToHloPass());
-      pm.addNestedPass<mlir::func::FuncOp>(
-          mlir::mhlo::createLegalizeHloToLinalgPass(true));
-      // pm.addPass(std::make_unique<LowerTagRegionsPass>());
-
-      if (mlir::failed(pm.run(module))) {
-        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
-        return absl::UnimplementedError(
-            "Compilation failure in Compile with MLIR Module");
-      }
-      std::cout << "Tuturu~ " << __LINE__ << std::endl;
-      module.dump();
-    }
-
-    // TODO(derekjchow): Copy AddTransformInterpreterPasses from jasc?
-
+    mlir::registerAllDialects(context);
+    mlir::registerLLVMDialectTranslation(context);
 
     {
       mlir::PassManager pm(&context);
 
-      pm.addPass(
-          mlir::bufferization::createEmptyTensorToAllocTensorPass());
-      mlir::bufferization::OneShotBufferizationOptions bufferization_options;
-      bufferization_options.setFunctionBoundaryTypeConversion(
-          mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
-      pm.addPass(mlir::createCSEPass());
-      bufferization_options.bufferizeFunctionBoundaries = true;
-      pm.addPass(CreateOneShotBufferizePass(bufferization_options));
+      // Stable HLO -> Linalg
+      mlir::stablehlo::StablehloLegalizeToLinalgPassOptions options;
+      options.enablePrimitiveOps = true;
+      pm.addPass(mlir::stablehlo::createStablehloLegalizeToLinalgPass(options));
+      pm.addPass(mlir::createCanonicalizerPass());
 
-      if (mlir::failed(pm.run(module))) {
-        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
-        return absl::UnimplementedError(
-            "Compilation failure in Compile with MLIR Module");
-      }
-      std::cout << "Tuturu~ " << __LINE__ << std::endl;
-      module.dump();
-    }
-
-
-
-    {
-      mlir::PassManager pm(&context);
-
-      pm.addPass(
-          mlir::bufferization::createEmptyTensorToAllocTensorPass());
-      // pm.addNestedPass<mlir::func::FuncOp>(
-      //     mlir::createLinalgDetensorizePass());
-      pm.addPass(
-          mlir::bufferization::createEmptyTensorToAllocTensorPass());
-      pm.addPass(mlir::createCSEPass());
-
-      if (mlir::failed(pm.run(module))) {
-        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
-        return absl::UnimplementedError(
-            "Compilation failure in Compile with MLIR Module");
-      }
-      std::cout << "Tuturu~ " << __LINE__ << std::endl;
-      module.dump();
-    }
-
-
-    {
-      mlir::PassManager pm(&context);
+      // Bufferize Linalg, going from tensor to memref
+      pm.addPass(mlir::createCanonicalizerPass());
       mlir::bufferization::OneShotBufferizePassOptions bufferization_options;
+      bufferization_options.allowReturnAllocsFromLoops = true;
       bufferization_options.bufferizeFunctionBoundaries = true;
-      pm.addPass(mlir::bufferization::createOneShotBufferizePass(
-          bufferization_options));
+      bufferization_options.functionBoundaryTypeConversion =
+          mlir::bufferization::LayoutMapOption::IdentityLayoutMap;
+      pm.addPass(mlir::createCSEPass());
+      pm.addPass(
+          mlir::bufferization::createOneShotBufferizePass(bufferization_options));
+      mlir::bufferization::BufferDeallocationPipelineOptions deallocationOptions;
+      mlir::bufferization::buildBufferDeallocationPipeline(pm,
+                                                           deallocationOptions);
 
+      // Lower linalg to loops
+      pm.addPass(mlir::createConvertLinalgToLoopsPass());
 
+      // Needed to lower memref.subview
+      pm.addPass(mlir::memref::createExpandStridedMetadataPass());
+
+      // More lowering!
+      pm.addPass(mlir::createSCFToControlFlowPass());
+      pm.addPass(mlir::createConvertControlFlowToLLVMPass());
+      pm.addPass(mlir::createArithToLLVMConversionPass());
+      pm.addPass(mlir::createConvertFuncToLLVMPass());
+      pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
+      pm.addPass(mlir::createReconcileUnrealizedCastsPass());
+
+      // Clean up
+      pm.addPass(mlir::createCanonicalizerPass());
+      pm.addPass(mlir::createSCCPPass());
+      pm.addPass(mlir::createCSEPass());
+      pm.addPass(mlir::createSymbolDCEPass());
 
       if (mlir::failed(pm.run(module))) {
-        std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
+        std::cout << "Tuturu~ " << __LINE__ << " FAILURE EMOTIONAL DAMAGE"
+                  << std::endl;
         return absl::UnimplementedError(
             "Compilation failure in Compile with MLIR Module");
       }
@@ -445,46 +452,74 @@ class KelvinPjRtClient : public xla::PjRtClient {
       module.dump();
     }
 
+    mlir::DialectRegistry registry;
+    mlir::registerBuiltinDialectTranslation(registry);
+    mlir::registerLLVMDialectTranslation(registry);
+    module->getContext()->appendDialectRegistry(registry);
 
-    mlir::PassManager pm2(&context);
-    // pm2.addPass(mlir::bufferization::createLinalgComprehensiveModuleBufferizePass());
-    pm2.addNestedPass<mlir::func::FuncOp>(mlir::createConvertLinalgToLoopsPass());
-    // pm2.addNestedPass<mlir::func::FuncOp>(mlir::createConvertSCFToControlFlowPass());
-    pm2.addNestedPass<mlir::func::FuncOp>(mlir::createSCFToControlFlowPass());
-    // pm2.addPass(mlir::createLowerToLLVMPass());
-    // pm2.addPass(mlir::createReconcileUnrealizedCastsPass());
-    if (mlir::failed(pm2.run(module))) {
-      std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
-      return absl::UnimplementedError(
-          "Compilation failure in Compile with MLIR Module");
+    // Translate MLIR module to LLVM IR.
+    llvm::LLVMContext llvm_context;
+    auto llvm_module = mlir::translateModuleToLLVMIR(module, llvm_context);
+    if (!llvm_module) {
+      return absl::InternalError("Failed to translate MLIR to LLVM IR.");
     }
-    std::cout << "Tuturu~ " << __LINE__ << std::endl;
-    module.dump();
 
+    // Set up the target machine.
+    std::string error;
+    // Hook to specify target architecture
+    const std::string target_triple = "riscv32-unknown-elf";
+    const llvm::Target* target =
+        llvm::TargetRegistry::lookupTarget(target_triple, error);
+    if (!target) {
+      return absl::InternalError(
+          absl::StrCat("Failed to lookup target: ", error));
+    }
 
+    llvm::TargetOptions opt;
+    auto reloc_model = std::optional<llvm::Reloc::Model>();
+    auto target_machine =
+        target->createTargetMachine(target_triple, "generic-rv32", "", opt, reloc_model);
 
-    // mlir::ConversionTarget target(context);
-    // target.addLegalDialect<mlir::LLVM::LLVMDialect>();
-    // target.addLegalOp<mlir::ModuleOp>();
+    llvm_module->setDataLayout(target_machine->createDataLayout());
 
-    // mlir::LLVMTypeConverter typeConverter(&context);
+    // Do LLVM optimizations here, tuned for "Os".
+    auto transformer = mlir::makeOptimizingTransformer(
+        /*optLevel=*/2, /*sizeLevel=*/1, target_machine);
+    {
+      auto error = transformer(llvm_module.get());
+      if (error) {
+        return absl::InternalError("Failed to optimize LLVM IR");
+      }
+    }
 
-    // mlir::RewritePatternSet patterns(&context);
-    // mlir::populateAffineToStdConversionPatterns(patterns);
-    // mlir::populateSCFToControlFlowConversionPatterns(patterns);
-    // mlir::arith::populateArithToLLVMConversionPatterns(typeConverter, patterns);
-    // mlir::populateFuncToLLVMConversionPatterns(typeConverter, patterns);
-    // mlir::cf::populateControlFlowToLLVMConversionPatterns(typeConverter,
-    //                                                       patterns);
+    std::string object_file_content;
+    // RAII guards to o/p streams flush to object_file_content
+    {
+      llvm::raw_string_ostream ostream(object_file_content);
+      llvm::buffer_ostream pstream(ostream);
+      llvm::legacy::PassManager pass;
+      if (target_machine->addPassesToEmitFile(
+              pass, pstream, nullptr, llvm::CodeGenFileType::ObjectFile)) {
+        return absl::InternalError("target_machine can't emit a file of this type.");
+      }
 
-    // auto compilation_result = mlir::applyFullConversion(module, target,
-    //                                                     std::move(patterns));
-    // if (mlir::failed(compilation_result)) {
-    //   std::cout << "Tuturu~ FAILURE EMOTIONAL DAMAGE" << std::endl;
-    // }
+      pass.run(*llvm_module);
+    }
+
+    std::cout << "Tuturu~ " << __LINE__ << " " << object_file_content.size() << std::endl;
+
+    std::ofstream elf_file("/usr/local/google/home/derekjchow/tuturu.elf", std::ios::binary);
+    if (elf_file) {
+      elf_file.write(object_file_content.c_str(), object_file_content.size());
+      elf_file.close();
+      std::cout << "Tuturu~ ELF file written to /usr/local/google/home/derekjchow/tuturu.elf" << std::endl;
+    } else {
+      std::cerr << "Tuturu~ Error opening file for writing." << std::endl;
+    }
 
     return absl::UnimplementedError("Unimplemented Compile with MLIR Module");
   }
+
   absl::StatusOr<std::unique_ptr<xla::PjRtLoadedExecutable>> CompileAndLoad(
       mlir::ModuleOp module, xla::CompileOptions options) override {
     std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
@@ -499,7 +534,7 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
   absl::StatusOr<std::unique_ptr<xla::PjRtLoadedExecutable>> Load(
       std::unique_ptr<xla::PjRtExecutable> executable,
-      const xla::LoadOptions& load_options) {
+      const xla::LoadOptions& load_options) override {
     std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return absl::UnimplementedError("Loading executable not supported.");
   }
@@ -548,6 +583,10 @@ class KelvinPjRtClient : public xla::PjRtClient {
 };
 
 PJRT_Error* PJRT_Kelvin_Client_Create(PJRT_Client_Create_Args* args) {
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmPrinters();
+  llvm::InitializeAllAsmParsers();
   std::unique_ptr<xla::PjRtClient> client =
       std::make_unique<KelvinPjRtClient>();
   args->client = pjrt::CreateWrapperClient(std::move(client));
