@@ -1,7 +1,18 @@
+cc_library(
+    name = "kelvin_pjrt_executable",
+    srcs = ["kelvin_pjrt_executable.cc"],
+    hdrs = ["kelvin_pjrt_executable.h"],
+    deps = [
+        "@xla//xla/pjrt:pjrt_client",
+        # "@xla//xla/hlo/ir:hlo",
+    ],
+)
+
 cc_binary(
     name = "pjrt_c_api_kelvin_plugin.so",
     srcs = ["pjrt_c_api_kelvin_plugin.cc"],
     deps = [
+        ":kelvin_pjrt_executable",
         "@xla//xla/pjrt/c:pjrt_c_api_hdrs",
         "@xla//xla/pjrt/c:pjrt_c_api_wrapper_impl",
         "@xla//xla/pjrt:pjrt_client",
