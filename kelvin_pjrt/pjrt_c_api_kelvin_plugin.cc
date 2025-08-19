@@ -77,6 +77,8 @@ class PjRtBuffer;
 namespace kelvin {
 
 class KelvinPjRtClient;
+class KelvinPjRtExecutable;
+class KelvinPjRtLoadedExecutable;
 
 class KelvinPjRtExecutable : public xla::PjRtExecutable {
  public:
@@ -252,6 +254,85 @@ class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
   const int process_index_;
   const std::string device_kind_;
   absl::flat_hash_map<std::string, xla::PjRtDeviceAttribute> attributes_;
+};
+
+class KelvinPjRtLoadedExecutable : public xla::PjRtLoadedExecutable {
+ public:
+  KelvinPjRtLoadedExecutable(
+      xla::PjRtClient* client,
+      std::unique_ptr<KelvinPjRtExecutable> executable)
+    : client_(client),
+      executable_(std::move(executable)),
+      deleted_(false) {}
+
+  ~KelvinPjRtLoadedExecutable() override = default;
+
+  xla::PjRtClient* client() const override {
+    return client_;
+  }
+
+  const xla::DeviceAssignment& device_assignment() const override {
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return device_assignment_;
+  }
+
+  xla::PjRtExecutable* GetExecutable() const override {
+    return executable_.get();
+  }
+
+  absl::StatusOr<absl::flat_hash_map<std::string, xla::PjRtValueType>>
+  GetCostAnalysis() const override {
+    return absl::UnimplementedError("GetCostAnalysis is not implemented.");
+  }
+
+
+  absl::Span<const LogicalDeviceIds> addressable_device_logical_ids() const override {
+    std::cout<< "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return {};
+  }
+
+  absl::Span<xla::PjRtDevice* const> addressable_devices() const override {
+    std::cout<< "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return {};
+  }
+
+  absl::StatusOr<std::vector<std::vector<std::unique_ptr<xla::PjRtBuffer>>>>
+  Execute(absl::Span<const std::vector<xla::PjRtBuffer*>> argument_handles,
+          const xla::ExecuteOptions& options,
+          std::optional<std::vector<xla::PjRtFuture<>>>& returned_futures) const override {
+    return absl::UnimplementedError("Execute is not implemented.");
+  }
+
+  absl::StatusOr<std::vector<std::unique_ptr<xla::PjRtBuffer>>>
+  ExecuteSharded(absl::Span<xla::PjRtBuffer* const> argument_handles,
+                 xla::PjRtDevice* device, const xla::ExecuteOptions& options,
+                 std::optional<xla::PjRtFuture<>>& returned_future,
+                 bool fill_future) const override {
+    std::cout<< "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("ExecuteSharded is not implemented.");
+  }
+
+  absl::StatusOr<std::vector<std::unique_ptr<xla::PjRtBuffer>>>
+  ExecutePortable(absl::Span<xla::PjRtBuffer* const> argument_handles,
+                  xla::PjRtDevice* device, const xla::ExecuteOptions& options,
+                  std::optional<xla::PjRtFuture<>>& returned_future,
+                  bool fill_future) const override {
+    std::cout<< "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("ExecutePortable is not implemented.");
+  }
+
+  void Delete() override {
+    std::cout<< "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+     deleted_ = true;
+  }
+  
+  bool IsDeleted() const override { return deleted_; }
+
+ private:
+  xla::PjRtClient* const client_;
+  const std::unique_ptr<KelvinPjRtExecutable> executable_;
+  bool deleted_;
+  const xla::DeviceAssignment device_assignment_;
 };
 
 class KelvinPjRtDevice : public xla::PjRtDevice {
@@ -649,7 +730,10 @@ class KelvinPjRtClient : public xla::PjRtClient {
       std::unique_ptr<xla::PjRtExecutable> executable,
       const xla::LoadOptions& load_options) override {
     std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Loading executable not supported.");
+    std::unique_ptr<KelvinPjRtExecutable> kelvin_executable(
+        reinterpret_cast<KelvinPjRtExecutable*>(executable.release()));
+    return std::make_unique<KelvinPjRtLoadedExecutable>(
+        this, std::move(kelvin_executable));
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>>
@@ -694,6 +778,8 @@ class KelvinPjRtClient : public xla::PjRtClient {
   KelvinPjRtDevice device_;
   std::vector<xla::PjRtDevice*> addressable_devices_;
 };
+
+
 
 PJRT_Error* PJRT_Kelvin_Client_Create(PJRT_Client_Create_Args* args) {
   llvm::InitializeAllTargets();
