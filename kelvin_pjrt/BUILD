@@ -13,6 +13,7 @@ cc_binary(
     srcs = ["pjrt_c_api_kelvin_plugin.cc"],
     deps = [
         ":kelvin_pjrt_executable",
+        "@com_google_absl//absl/strings",
         "@xla//xla/pjrt/c:pjrt_c_api_hdrs",
         "@xla//xla/pjrt/c:pjrt_c_api_wrapper_impl",
         "@xla//xla/pjrt:pjrt_client",

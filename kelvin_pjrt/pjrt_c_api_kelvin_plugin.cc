@@ -5,6 +5,8 @@
 #include "xla/pjrt/pjrt_client.h"
 #include "xla/tsl/platform/status.h"
 
+#include "absl/strings/str_format.h"
+
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
 #include "mlir/Conversion/BufferizationToMemRef/BufferizationToMemRef.h"
 #include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
@@ -81,6 +83,7 @@ class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
  public:
   KelvinPjRtDeviceDescription(int id, int process_index)
     : id_(id),
+      string_id_(absl::StrFormat("KelvinPjRtDevice(id=%d)", id)),
       process_index_(process_index),
       device_kind_("KelvinV2"),
       attributes_({}) {}
@@ -110,8 +113,7 @@ class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
 
   absl::string_view ToString() const override {
     std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    // TODO(derekjchow): Add in id.
-    return "KelvinPjRtDevice(id=)";
+    return string_id_;
   }
 
   // Returns vendor specific attributes about the device. For example the model
@@ -139,6 +141,7 @@ class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
 
  public:
   const int id_;
+  const std::string string_id_;
   const int process_index_;
   const std::string device_kind_;
   absl::flat_hash_map<std::string, xla::PjRtDeviceAttribute> attributes_;
