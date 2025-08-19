@@ -52,7 +52,7 @@
 
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 
-
+#include "kelvin_pjrt/kelvin_pjrt_device.h"
 #include "kelvin_pjrt/kelvin_pjrt_executable.h"
 
 
@@ -78,74 +78,6 @@ class KelvinPjRtExecutable;
 class KelvinPjRtLoadedExecutable;
 
 
-
-class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
- public:
-  KelvinPjRtDeviceDescription(int id, int process_index)
-    : id_(id),
-      string_id_(absl::StrFormat("KelvinPjRtDevice(id=%d)", id)),
-      process_index_(process_index),
-      device_kind_("KelvinV2"),
-      attributes_({}) {}
-
-  ~KelvinPjRtDeviceDescription() override = default;
-
-  int id() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return id_;
-  }
-
-  int process_index() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return process_index_;
-  }
-
-  absl::string_view device_kind() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return device_kind_;
-  }
-
-  absl::string_view DebugString() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    // TODO(derekjchow): Implement more diligently
-    return "KelvinPjRtDeviceDescription debug device";
-  }
-
-  absl::string_view ToString() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return string_id_;
-  }
-
-  // Returns vendor specific attributes about the device. For example the model
-  // number of a GPU, or the mesh coordinates of a TPU device. The returned
-  // reference will remain valid for the lifetime of the PjRtDevice.
-  const absl::flat_hash_map<std::string, xla::PjRtDeviceAttribute>&
-  Attributes() const override {
-    return attributes_;
-  }
-
-  // Returns all memory spaces attached to this device.
-  // The memory spaces are in no particular order.
-  absl::Span<const xla::PjRtMemorySpaceDescription* const> memory_spaces()
-      const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return {};
-  }
-
-  // Returns the default memory space attached to this device.
-  absl::StatusOr<const xla::PjRtMemorySpaceDescription*>
-  default_memory_space() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return absl::UnimplementedError("default_memory_space Not implemented.");
-  }
-
- public:
-  const int id_;
-  const std::string string_id_;
-  const int process_index_;
-  const std::string device_kind_;
-  absl::flat_hash_map<std::string, xla::PjRtDeviceAttribute> attributes_;
-};
 
 class KelvinPjRtLoadedExecutable : public xla::PjRtLoadedExecutable {
  public:
@@ -224,130 +156,6 @@ class KelvinPjRtLoadedExecutable : public xla::PjRtLoadedExecutable {
   const std::unique_ptr<KelvinPjRtExecutable> executable_;
   bool deleted_;
   const xla::DeviceAssignment device_assignment_;
-};
-
-class KelvinPjRtDevice : public xla::PjRtDevice {
- public:
-  explicit KelvinPjRtDevice(KelvinPjRtClient* client)
-    : client_(client),
-      description_(42, 0) {}
-
-  ~KelvinPjRtDevice() override = default;
-
-  xla::PjRtClient* client() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return reinterpret_cast<xla::PjRtClient*>(client_);
-  }
-
-  bool IsAddressable() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return true;
-  }
-
-  const xla::PjRtDeviceDescription& description() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return description_;
-  }
-
-  ABSL_DEPRECATED("Use global_device_id() instead")
-  int id() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return global_device_id().value();
-  }
-
-  xla::PjRtGlobalDeviceId global_device_id() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return xla::PjRtGlobalDeviceId(description().id());
-  }
-
-  xla::PjRtLocalDeviceId local_device_id() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return xla::PjRtLocalDeviceId(local_hardware_id().value());
-  }
-
-  xla::PjRtLocalHardwareId local_hardware_id() const override {
-    return xla::PjRtLocalHardwareId(9001);
-  }
-
-  int process_index() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return description().process_index();
-  }
-
-  absl::string_view device_kind() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return description().device_kind();
-  }
-
-  absl::string_view DebugString() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return description().DebugString();
-  }
-
-  absl::string_view ToString() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return description().ToString();
-  }
-
-  const absl::flat_hash_map<std::string, xla::PjRtDeviceAttribute>&
-  Attributes() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return description().Attributes();
-  }
-
-  std::unique_ptr<xla::ScopedAsyncTrackingEvent> CreateAsyncTrackingEvent(
-      absl::string_view description) const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return nullptr;
-  }
-
-  absl::Status TransferToInfeed(const xla::LiteralSlice& literal) override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return absl::UnimplementedError("TransferToInfeed not implemented");
-  }
-
-  absl::Status TransferFromOutfeed(xla::MutableBorrowingLiteral literal) override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return absl::UnimplementedError("TransferFromOutfeed not implemented");
-  }
-
-  absl::StatusOr<tsl::AllocatorStats> GetAllocatorStats() const override {
-    return absl::UnimplementedError("GetAllocatorStats is not supported");
-  }
-
-  absl::Span<xla::PjRtMemorySpace* const> memory_spaces() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return {};
-  }
-
-  absl::StatusOr<xla::PjRtMemorySpace*> default_memory_space() const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return absl::UnimplementedError("default_memory_space not implemented");
-  }
-
-  absl::StatusOr<xla::PjRtMemorySpace*> memory_space_by_kind(
-      absl::string_view memory_space_kind) const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return absl::UnimplementedError("memory_space_by_kind not implemented");
-  }
-
-  absl::StatusOr<std::intptr_t> GetStreamForExternalReadyEvents()
-      const override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return absl::UnimplementedError(
-        "PjRtDevice::GetStreamForExternalReadyEvents only implemented for "
-        "GPU");
-  }
-
-  absl::StatusOr<bool> PoisonExecution(int32_t launch_id,
-                                       absl::Status error) override {
-    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return absl::UnimplementedError("PoisonExecution is not supported");
-  }
-
- private:
-  KelvinPjRtClient* const client_;
-  KelvinPjRtDeviceDescription description_;
 };
 
 class KelvinPjRtClient : public xla::PjRtClient {

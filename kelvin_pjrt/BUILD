@@ -4,7 +4,17 @@ cc_library(
     hdrs = ["kelvin_pjrt_executable.h"],
     deps = [
         "@xla//xla/pjrt:pjrt_client",
-        # "@xla//xla/hlo/ir:hlo",
+    ],
+)
+
+cc_library(
+    name = "kelvin_pjrt_device",
+    srcs = ["kelvin_pjrt_device.cc"],
+    hdrs = ["kelvin_pjrt_device.h"],
+    deps = [
+        "@xla//xla/pjrt:pjrt_client",
+        "@xla//xla/tsl/platform:status",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -12,12 +22,13 @@ cc_binary(
     name = "pjrt_c_api_kelvin_plugin.so",
     srcs = ["pjrt_c_api_kelvin_plugin.cc"],
     deps = [
+        ":kelvin_pjrt_device",
         ":kelvin_pjrt_executable",
-        "@com_google_absl//absl/strings",
         "@xla//xla/pjrt/c:pjrt_c_api_hdrs",
         "@xla//xla/pjrt/c:pjrt_c_api_wrapper_impl",
         "@xla//xla/pjrt:pjrt_client",
         "@xla//xla/tsl/platform:status",
+        "@com_google_absl//absl/strings",
         "@llvm-project//mlir:AffineToStandard",
         "@llvm-project//mlir:ArithToLLVM",
         "@llvm-project//mlir:BufferizationDialect",
