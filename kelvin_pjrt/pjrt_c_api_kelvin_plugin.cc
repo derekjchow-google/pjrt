@@ -39,11 +39,6 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/Passes.h"
-#include "stablehlo/dialect/StablehloOps.h"
-#include "stablehlo/transforms/Passes.h"
-#include "xla/mlir_hlo/transforms/passes.h"
-
-#include "xla/mlir_hlo/mhlo/transforms/passes.h"
 
 #include "stablehlo/conversions/linalg/transforms/Passes.h"
 

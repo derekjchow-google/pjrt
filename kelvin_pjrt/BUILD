@@ -63,11 +63,7 @@ cc_binary(
         "@llvm-project//llvm:X86CodeGen",
 
 
-        "@stablehlo//:stablehlo_ops",
-        "@stablehlo//:stablehlo_passes",
         "@stablehlo//:linalg_passes",
-        "@xla//xla/mlir_hlo:all_passes",
-        # "@xla//xla/mlir_hlo:hlo_passes",
     ],
     linkshared = True,
 )
