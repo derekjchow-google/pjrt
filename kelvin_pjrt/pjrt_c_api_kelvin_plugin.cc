@@ -54,6 +54,7 @@
 
 #include "kelvin_pjrt/kelvin_pjrt_device.h"
 #include "kelvin_pjrt/kelvin_pjrt_executable.h"
+#include "kelvin_pjrt/kelvin_pjrt_memory_space.h"
 
 
 #include "llvm/IR/LegacyPassManager.h"
@@ -162,36 +163,32 @@ class KelvinPjRtClient : public xla::PjRtClient {
  public:
   explicit KelvinPjRtClient()
     : device_(this),
-      addressable_devices_({&device_}) {}
+      addressable_devices_({&device_}),
+      memory_space_(this, 0, &device_),
+      memory_spaces_({&memory_space_}) {}
 
   int process_index() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return 0;
   }
 
   int device_count() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return 1;
   }
 
   int addressable_device_count() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return 1;
   }
 
   absl::Span<xla::PjRtDevice* const> devices() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return addressable_devices_;
   }
 
   absl::Span<xla::PjRtDevice* const> addressable_devices() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return addressable_devices_;
   }
 
   absl::StatusOr<xla::PjRtDevice*> LookupDevice(
       xla::PjRtGlobalDeviceId global_device_id) const override {
-    std::cout << "Tuturu~ LookupDevice " << global_device_id << std::endl;
     for (xla::PjRtDevice* device : devices()) {
       if (device->global_device_id() == global_device_id) {
         return device;
@@ -202,8 +199,6 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
   absl::StatusOr<xla::PjRtDevice*> LookupAddressableDevice(
       xla::PjRtLocalDeviceId local_device_id) const override {
-    std::cout << "Tuturu~ LookupAddressableDevice "
-              << local_device_id << std::endl;
     for (xla::PjRtDevice* device : addressable_devices()) {
       if (device->local_device_id() == local_device_id) {
         return device;
@@ -214,56 +209,47 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
   void UpdateGlobalProcessInfo(
       absl::Span<tensorflow::CoordinatedTaskStateInfo> infos) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
   }
 
   absl::Span<xla::PjRtMemorySpace* const> memory_spaces() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return {};
+    return memory_spaces_;
+    // return {};
   }
 
   xla::PjRtPlatformId platform_id() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return xla::PjRtPlatformId(0);
   }
 
   absl::string_view platform_name() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return "kelvin";
   }
 
   absl::string_view platform_version() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return "0.0.1";
   }
 
   std::optional<std::shared_ptr<xla::KeyValueStoreInterface>>
   key_value_store() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return std::nullopt;
   }
 
   std::optional<xla::PjRtPluginAttributes> plugin_attributes() const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return std::nullopt;
   }
 
   absl::StatusOr<xla::DeviceAssignment> GetDefaultDeviceAssignment(
       int num_replicas, int num_partitions) const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return xla::Unimplemented("GetDefaultDeviceAssignment is not supported.");
   }
 
   absl::StatusOr<xla::DeviceAssignment> GetDefaultDeviceAssignment(
       int num_replicas, std::optional<int> num_replicas_per_slice,
       int num_partitions, const xla::MultiSliceConfig* multi_slice_config) const override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return xla::Unimplemented("Multi slice device assignment is not supported.");
   }
 
   absl::StatusOr<xla::Layout> GetDefaultLayout(
       xla::PrimitiveType element_type, absl::Span<const int64_t> dims) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     return xla::Unimplemented("GetDefaultLayout is not supported.");
   }
 
@@ -275,13 +261,11 @@ class KelvinPjRtClient : public xla::PjRtClient {
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>> Compile(
       const xla::XlaComputation& computation,
       xla::CompileOptions options) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Unimplemented");
+    return absl::UnimplementedError("XlaCompile Unimplemented");
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>> Compile(
       mlir::ModuleOp module, xla::CompileOptions options) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     module.dump();
 
     auto& context = *(module.getContext());
@@ -415,7 +399,6 @@ class KelvinPjRtClient : public xla::PjRtClient {
 
   absl::StatusOr<std::unique_ptr<xla::PjRtLoadedExecutable>> CompileAndLoad(
       mlir::ModuleOp module, xla::CompileOptions options) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     auto compilation_result = Compile(module, options);
     if (!compilation_result.ok()) {
       return compilation_result.status();
@@ -428,7 +411,6 @@ class KelvinPjRtClient : public xla::PjRtClient {
   absl::StatusOr<std::unique_ptr<xla::PjRtLoadedExecutable>> Load(
       std::unique_ptr<xla::PjRtExecutable> executable,
       const xla::LoadOptions& load_options) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
     std::unique_ptr<KelvinPjRtExecutable> kelvin_executable(
         reinterpret_cast<KelvinPjRtExecutable*>(executable.release()));
     return std::make_unique<KelvinPjRtLoadedExecutable>(
@@ -438,8 +420,7 @@ class KelvinPjRtClient : public xla::PjRtClient {
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>>
   DeserializeExecutable(absl::string_view serialized,
                         std::optional<xla::CompileOptions> options) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Unimplemented");
+    return absl::UnimplementedError("DeserializeExecutable Unimplemented");
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtBuffer>> BufferFromHostBuffer(
@@ -449,19 +430,25 @@ class KelvinPjRtClient : public xla::PjRtClient {
       absl::AnyInvocable<void() &&> on_done_with_host_buffer,
       xla::PjRtMemorySpace* memory_space,
       const xla::Layout* device_layout) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Unimplemented");
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << "  type=" << type << std::endl;
+    std::cout << "  Dims=[ ";
+    for (int64_t dim : dims) {
+      std::cout << dim << " ";
+    }
+    std::cout << " ]" << std::endl;
+    return absl::UnimplementedError("BufferFromHostBuffer Unimplemented");
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtBuffer>> CreateUninitializedBuffer(
       const xla::Shape& shape, xla::PjRtMemorySpace* memory_space) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
-    return absl::UnimplementedError("Unimplemented");
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return absl::UnimplementedError("CreateUninitializedBuffer Unimplemented");
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtBuffer>> CreateErrorBuffer(
       absl::Status error, const xla::Shape& shape, xla::PjRtMemorySpace* memory) override {
-    std::cout << "Tuturu~ " << __FUNCTION__ << std::endl;
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
     return xla::Unimplemented("CreateErrorBuffer not supported.");
   }
 
@@ -476,6 +463,8 @@ class KelvinPjRtClient : public xla::PjRtClient {
  private:
   KelvinPjRtDevice device_;
   std::vector<xla::PjRtDevice*> addressable_devices_;
+  KelvinPjRtMemorySpace memory_space_;
+  std::vector<xla::PjRtMemorySpace*> memory_spaces_;
 };
 
 
@@ -493,11 +482,13 @@ PJRT_Error* PJRT_Kelvin_Client_Create(PJRT_Client_Create_Args* args) {
 
 PJRT_Error* PJRT_Kelvin_ExecuteContext_Create(
     PJRT_ExecuteContext_Create_Args* args) {
+  std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
   return new PJRT_Error{absl::UnimplementedError("Implement me.")};
 }
 
 PJRT_Error* PJRT_Kelvin_DeviceTopology_Create(
     PJRT_TopologyDescription_Create_Args* args) {
+  std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
   return new PJRT_Error{
       absl::UnimplementedError("Topology not supported for Kelvin compilation.")};
 }

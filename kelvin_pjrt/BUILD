@@ -8,6 +8,17 @@ cc_library(
 )
 
 cc_library(
+    name = "kelvin_pjrt_memory_space",
+    srcs = ["kelvin_pjrt_memory_space.cc"],
+    hdrs = ["kelvin_pjrt_memory_space.h"],
+    deps = [
+        "@xla//xla/pjrt:pjrt_client",
+        "@xla//xla/tsl/platform:status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "kelvin_pjrt_device",
     srcs = ["kelvin_pjrt_device.cc"],
     hdrs = ["kelvin_pjrt_device.h"],
@@ -24,6 +35,7 @@ cc_binary(
     deps = [
         ":kelvin_pjrt_device",
         ":kelvin_pjrt_executable",
+        ":kelvin_pjrt_memory_space",
         "@xla//xla/pjrt/c:pjrt_c_api_hdrs",
         "@xla//xla/pjrt/c:pjrt_c_api_wrapper_impl",
         "@xla//xla/pjrt:pjrt_client",

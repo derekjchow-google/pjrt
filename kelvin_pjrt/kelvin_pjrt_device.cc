@@ -122,13 +122,14 @@ absl::StatusOr<tsl::AllocatorStats> KelvinPjRtDevice::GetAllocatorStats() const 
 
 absl::Span<xla::PjRtMemorySpace* const> KelvinPjRtDevice::memory_spaces() const {
   std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-  return {};
+  return client_->memory_spaces();
 }
 
 absl::StatusOr<xla::PjRtMemorySpace*> KelvinPjRtDevice::default_memory_space()
     const {
   std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-  return absl::UnimplementedError("default_memory_space not implemented");
+  return client_->memory_spaces()[0];
+  // return absl::UnimplementedError("default_memory_space not implemented");
 }
 
 absl::StatusOr<xla::PjRtMemorySpace*> KelvinPjRtDevice::memory_space_by_kind(
