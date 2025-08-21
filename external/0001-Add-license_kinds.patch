@@ -1,0 +1,92 @@
+From dc9d9689ab4a97cbbd35f56c1fb839794e88309e Mon Sep 17 00:00:00 2001
+From: Derek Chow <derekjchow@google.com>
+Date: Wed, 20 Aug 2025 13:43:28 -0700
+Subject: [PATCH] Add license_kinds.
+
+---
+ BUILD                                         |  1 +
+ external/0001-Add-license_kinds-to-rule.patch | 37 +++++++++++++++++++
+ external/BUILD                                |  1 +
+ repos.bzl                                     |  4 ++
+ 4 files changed, 43 insertions(+)
+ create mode 100644 external/0001-Add-license_kinds-to-rule.patch
+ create mode 100644 external/BUILD
+
+diff --git a/BUILD b/BUILD
+index 64c8b3b..0dbd8a6 100644
+--- a/BUILD
++++ b/BUILD
+@@ -24,6 +24,7 @@ package(
+ license(
+     name = "license",
+     package_name = "mpact-riscv",
++    license_kinds = ["@rules_license//licenses/spdx:Apache-2.0"],
+ )
+ 
+ licenses(["notice"])
+diff --git a/external/0001-Add-license_kinds-to-rule.patch b/external/0001-Add-license_kinds-to-rule.patch
+new file mode 100644
+index 0000000..acb3905
+--- /dev/null
++++ b/external/0001-Add-license_kinds-to-rule.patch
+@@ -0,0 +1,37 @@
++From b99970fc5fc8c7934f30b8eaeb5ab4ccd8f46fc8 Mon Sep 17 00:00:00 2001
++From: Derek Chow <derekjchow@google.com>
++Date: Wed, 20 Aug 2025 13:51:46 -0700
++Subject: [PATCH] Add license_kinds to rule.
++
++---
++ BUILD                                              | 1 +
++ mpact/sim/util/memory/tagged_flat_demand_memory.cc | 1 -
++ 2 files changed, 1 insertion(+), 1 deletion(-)
++
++diff --git a/BUILD b/BUILD
++index 1208a57..4228264 100644
++--- a/BUILD
+++++ b/BUILD
++@@ -25,6 +25,7 @@ package(
++ license(
++     name = "license",
++     package_name = "mpact-sim",
+++    license_kinds = ["@rules_license//licenses/spdx:Apache-2.0"],
++ )
++ 
++ licenses(["notice"])
++diff --git a/mpact/sim/util/memory/tagged_flat_demand_memory.cc b/mpact/sim/util/memory/tagged_flat_demand_memory.cc
++index 73b8593..fdcf391 100644
++--- a/mpact/sim/util/memory/tagged_flat_demand_memory.cc
+++++ b/mpact/sim/util/memory/tagged_flat_demand_memory.cc
++@@ -14,7 +14,6 @@
++ 
++ #include "mpact/sim/util/memory/tagged_flat_demand_memory.h"
++ 
++-#include <bit>
++ #include <cstdint>
++ #include <cstring>
++ 
++-- 
++2.51.0.rc1.193.gad69d77794-goog
++
+diff --git a/external/BUILD b/external/BUILD
+new file mode 100644
+index 0000000..f9e947e
+--- /dev/null
++++ b/external/BUILD
+@@ -0,0 +1 @@
++# Empty build file.
+diff --git a/repos.bzl b/repos.bzl
+index 3353463..e10ce9f 100644
+--- a/repos.bzl
++++ b/repos.bzl
+@@ -25,4 +25,8 @@ def mpact_riscv_repos():
+             sha256 = "e59a8ee258c3108d5589de7bfdd0b3880c31f7a7a2bd80284cdf0f4bb00fb298",
+             strip_prefix = "mpact-sim-31d54ae16a1227fc102dde44f2283113863b10e5",
+             url = "https://github.com/google/mpact-sim/archive/31d54ae16a1227fc102dde44f2283113863b10e5.tar.gz",
++            patches = [
++                "@com_google_mpact-riscv//external:0001-Add-license_kinds-to-rule.patch",
++            ],
++            patch_args = ["-p1"],
+         )
+-- 
+2.51.0.rc1.193.gad69d77794-goog
+

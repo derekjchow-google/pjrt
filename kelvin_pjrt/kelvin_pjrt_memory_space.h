@@ -4,10 +4,10 @@
 #include <iostream>
 #include <string>
 
-#include "xla/pjrt/pjrt_client.h"
-// #include "xla/pjrt/pjrt_memory_space.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "mpact/sim/util/memory/flat_demand_memory.h"
+#include "xla/pjrt/pjrt_client.h"
 
 namespace kelvin {
 
@@ -43,6 +43,7 @@ class KelvinPjRtMemorySpace : public xla::PjRtMemorySpace {
   const int kind_id_;
   const std::string debug_string_;
   const std::string to_string_;
+  ::mpact::sim::util::FlatDemandMemory memory_;
 };
 
 }  // namespace kelvin

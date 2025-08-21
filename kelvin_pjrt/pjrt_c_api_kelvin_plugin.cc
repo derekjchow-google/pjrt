@@ -431,7 +431,12 @@ class KelvinPjRtClient : public xla::PjRtClient {
       xla::PjRtMemorySpace* memory_space,
       const xla::Layout* device_layout) override {
     std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << "  id=" << memory_space->id() << std::endl;
     std::cout << "  type=" << type << std::endl;
+    std::cout << "  memory_space=" << reinterpret_cast<uintptr_t>(memory_space)
+              << std::endl;
+    std::cout << "  memory_space_="
+              << reinterpret_cast<uintptr_t>(&memory_space_) << std::endl;
     std::cout << "  Dims=[ ";
     for (int64_t dim : dims) {
       std::cout << dim << " ";

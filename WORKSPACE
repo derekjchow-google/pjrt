@@ -37,57 +37,23 @@ python_init_repositories(
 )
 
 load("@xla//third_party/py:python_init_toolchains.bzl", "python_init_toolchains")
-
 python_init_toolchains()
-
 load("@xla//third_party/py:python_init_pip.bzl", "python_init_pip")
-
 python_init_pip()
-
 load("@pypi//:requirements.bzl", "install_deps")
-
 install_deps()
-
 load("@xla//:workspace2.bzl", "xla_workspace2")
-
 xla_workspace2()
-
 load("@xla//:workspace1.bzl", "xla_workspace1")
-
 xla_workspace1()
-
 load("@xla//:workspace0.bzl", "xla_workspace0")
-
 xla_workspace0()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 load(
     "@rules_ml_toolchain//third_party/gpus/cuda/hermetic:cuda_json_init_repository.bzl",
     "cuda_json_init_repository",
 )
-
 cuda_json_init_repository()
-
 load(
     "@cuda_redist_json//:distributions.bzl",
     "CUDA_REDISTRIBUTIONS",
@@ -98,43 +64,32 @@ load(
     "cuda_redist_init_repositories",
     "cudnn_redist_init_repository",
 )
-
 cuda_redist_init_repositories(
     cuda_redistributions = CUDA_REDISTRIBUTIONS,
 )
-
 cudnn_redist_init_repository(
     cudnn_redistributions = CUDNN_REDISTRIBUTIONS,
 )
-
 load(
     "@rules_ml_toolchain//third_party/gpus/cuda/hermetic:cuda_configure.bzl",
     "cuda_configure",
 )
-
 cuda_configure(name = "local_config_cuda")
-
 load(
     "@rules_ml_toolchain//third_party/nccl/hermetic:nccl_redist_init_repository.bzl",
     "nccl_redist_init_repository",
 )
-
 nccl_redist_init_repository()
-
 load(
     "@rules_ml_toolchain//third_party/nccl/hermetic:nccl_configure.bzl",
     "nccl_configure",
 )
-
 nccl_configure(name = "local_config_nccl")
-
 load(
     "@rules_ml_toolchain//third_party/nvshmem/hermetic:nvshmem_json_init_repository.bzl",
     "nvshmem_json_init_repository",
 )
-
 nvshmem_json_init_repository()
-
 load(
     "@nvshmem_redist_json//:distributions.bzl",
     "NVSHMEM_REDISTRIBUTIONS",
@@ -143,25 +98,44 @@ load(
     "@rules_ml_toolchain//third_party/nvshmem/hermetic:nvshmem_redist_init_repository.bzl",
     "nvshmem_redist_init_repository",
 )
-
 nvshmem_redist_init_repository(
     nvshmem_redistributions = NVSHMEM_REDISTRIBUTIONS,
 )
-
 load(
     "@rules_ml_toolchain//third_party/nvshmem/hermetic:nvshmem_configure.bzl",
     "nvshmem_configure",
 )
-
 nvshmem_configure(name = "local_config_nvshmem")
-
 load(
     "@rules_ml_toolchain//cc_toolchain/deps:cc_toolchain_deps.bzl",
     "cc_toolchain_deps",
 )
+#cc_toolchain_deps()
+#register_toolchains("@rules_ml_toolchain//cc_toolchain:lx64_lx64")
+#register_toolchains("@rules_ml_toolchain//cc_toolchain:lx64_lx64_cuda")
 
-cc_toolchain_deps()
+################################################################################
+# MPACT RISC-V
+################################################################################
 
-register_toolchains("@rules_ml_toolchain//cc_toolchain:lx64_lx64")
-
-register_toolchains("@rules_ml_toolchain//cc_toolchain:lx64_lx64_cuda")
+http_archive(
+    name = "com_google_mpact-riscv",
+    # sha256 = "1b560fe7d4100486784d6f2329e82a63dd37301e185ba77d0fd69b3ecc299649",
+    integrity = "sha256-TiTfHgtB8boEyPcrGr09grceRRf6L81UwQMTT1NcDbY=",
+    strip_prefix = "mpact-riscv-92597b9bc9f07f7dedc0d380af70dbc3cf595339",
+    urls = [
+        "https://github.com/google/mpact-riscv/archive/92597b9bc9f07f7dedc0d380af70dbc3cf595339.tar.gz",
+    ],
+    patches = [
+        "@kelvin_pjrt//external:0001-Add-license_kinds.patch"
+    ],
+    patch_args = ["-p1"],
+)
+load("@com_google_mpact-riscv//:repos.bzl", "mpact_riscv_repos")
+mpact_riscv_repos()
+load("@com_google_mpact-riscv//:dep_repos.bzl", "mpact_riscv_dep_repos")
+mpact_riscv_dep_repos()
+load("@com_google_mpact-riscv//:deps.bzl", "mpact_riscv_deps")
+mpact_riscv_deps()
+load("@com_google_mpact-sim//:protobuf_deps.bzl", "mpact_sim_protobuf_deps")
+mpact_sim_protobuf_deps()

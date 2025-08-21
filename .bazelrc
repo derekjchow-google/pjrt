@@ -1,9 +1,13 @@
 common --noenable_bzlmod
-common --experimental_repo_remote_exec
 
 build --incompatible_enable_cc_toolchain_resolution
 build --repo_env USE_HERMETIC_CC_TOOLCHAIN=1
 
+build:clang_local --noincompatible_enable_cc_toolchain_resolution
+build:clang_local --@rules_ml_toolchain//common:enable_hermetic_cc=False
+build:clang_local --repo_env USE_HERMETIC_CC_TOOLCHAIN=0
+
+# tensorflow.bazelrc
 build --define framework_shared_object=true
 build --define tsl_protobuf_header_only=true
 
@@ -19,3 +23,75 @@ build --action_env=GRPC_BAZEL_RUNTIME=1
 build --repo_env=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb
 build --action_env=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb
 build --repo_env=RULES_PYTHON_ENABLE_PYSTAR=0
+
+build:linux_cpu --config=avx_linux
+build:linux_cpu --linkopt=-lrt
+build:linux_cpu --host_linkopt=-lrt
+build:linux_cpu --linkopt=-lm
+build:linux_cpu --host_linkopt=-lm
+build:linux_cpu --config=avx_linux
+build:linux_cpu --copt=-Wno-error=unused-command-line-argument
+build:linux_cpu --copt=-Wno-gnu-offsetof-extensions
+
+build --noincompatible_remove_legacy_whole_archive
+build --features=-force_no_whole_archive
+
+build --enable_platform_specific_config
+
+build:linux --host_copt=-w
+
+build -c opt
+
+build --repo_env=USE_PYWRAP_RULES=True
+build --copt=-DGRPC_BAZEL_BUILD
+build --host_copt=-DGRPC_BAZEL_BUILD
+build --action_env=GRPC_BAZEL_RUNTIME=1
+build --repo_env=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb
+build --action_env=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=upb
+build --repo_env=RULES_PYTHON_ENABLE_PYSTAR=0
+
+build:linux --define=PREFIX=/usr
+build:linux --define=LIBDIR=$(PREFIX)/lib
+build:linux --define=INCLUDEDIR=$(PREFIX)/include
+build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+
+build:linux --cxxopt=-std=c++17
+build:linux --host_cxxopt=-std=c++17
+
+
+
+
+
+common --experimental_repo_remote_exec
+
+
+# Generated
+build --action_env CLANG_COMPILER_PATH=/usr/lib/llvm-19/bin/clang
+build --repo_env CC=/usr/lib/llvm-19/bin/clang
+build --repo_env BAZEL_COMPILER=/usr/lib/llvm-19/bin/clang
+build --linkopt --ld-path=/usr/bin/ld.lld
+#build --action_env PYTHON_BIN_PATH=/usr/local/google/home/derekjchow/venv/bin/python3
+#build --python_path /usr/local/google/home/derekjchow/venv/bin/python3
+test --test_env LD_LIBRARY_PATH
+test --test_size_filters small,medium
+build --copt -Wno-sign-compare
+build --copt -Wno-error=unused-command-line-argument
+build --copt -Wno-c23-extensions
+build --build_tag_filters -no_oss,-gpu
+build --test_tag_filters -no_oss,-gpu
+test --build_tag_filters -no_oss,-gpu
+test --test_tag_filters -no_oss,-gpu
+
+
+
+
+# MPACT stuff
+#build --cxxopt=-std=c++17
+#build --host_cxxopt=-std=c++17
+
+#build --action_env=BAZEL_CXXOPTS="-std=c++20"
+#build --action_env=CC="clang"
+#build --copt=-Wno-unused-function --cxxopt="-std=c++20"
+#build --host_copt=-Wno-unused-function --host_cxxopt="-std=c++20"
+
+#build --cxxopt="-std=gnu++20"

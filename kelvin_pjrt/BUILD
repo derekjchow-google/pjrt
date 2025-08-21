@@ -15,6 +15,7 @@ cc_library(
         "@xla//xla/pjrt:pjrt_client",
         "@xla//xla/tsl/platform:status",
         "@com_google_absl//absl/strings",
+        "@com_google_mpact-sim//mpact/sim/util/memory",
     ],
 )
 
