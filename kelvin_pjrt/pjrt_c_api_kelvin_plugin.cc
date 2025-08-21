@@ -85,9 +85,12 @@ class KelvinPjRtLoadedExecutable : public xla::PjRtLoadedExecutable {
  public:
   KelvinPjRtLoadedExecutable(
       xla::PjRtClient* client,
-      std::unique_ptr<KelvinPjRtExecutable> executable)
+      std::unique_ptr<KelvinPjRtExecutable> executable,
+      xla::PjRtDevice* device)
     : client_(client),
       executable_(std::move(executable)),
+      device_(device),
+      logical_device_ids_({{device->local_device_id().value(), 0}}),
       deleted_(false) {}
 
   ~KelvinPjRtLoadedExecutable() override = default;
@@ -112,13 +115,13 @@ class KelvinPjRtLoadedExecutable : public xla::PjRtLoadedExecutable {
 
 
   absl::Span<const LogicalDeviceIds> addressable_device_logical_ids() const override {
-    std::cout<< "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return {};
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return logical_device_ids_;
   }
 
   absl::Span<xla::PjRtDevice* const> addressable_devices() const override {
-    std::cout<< "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    return {};
+    std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
+    return {&device_, 1};
   }
 
   absl::StatusOr<std::vector<std::vector<std::unique_ptr<xla::PjRtBuffer>>>>
@@ -156,6 +159,8 @@ class KelvinPjRtLoadedExecutable : public xla::PjRtLoadedExecutable {
  private:
   xla::PjRtClient* const client_;
   const std::unique_ptr<KelvinPjRtExecutable> executable_;
+  xla::PjRtDevice* device_;
+  std::vector<LogicalDeviceIds> logical_device_ids_;
   bool deleted_;
   const xla::DeviceAssignment device_assignment_;
 };
@@ -415,7 +420,7 @@ class KelvinPjRtClient : public xla::PjRtClient {
     std::unique_ptr<KelvinPjRtExecutable> kelvin_executable(
         reinterpret_cast<KelvinPjRtExecutable*>(executable.release()));
     return std::make_unique<KelvinPjRtLoadedExecutable>(
-        this, std::move(kelvin_executable));
+        this, std::move(kelvin_executable), &device_);
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtExecutable>>
