@@ -162,9 +162,9 @@ class KelvinPjRtLoadedExecutable : public xla::PjRtLoadedExecutable {
 class KelvinPjRtClient : public xla::PjRtClient {
  public:
   explicit KelvinPjRtClient()
-    : device_(this),
+    : memory_space_(this, 0),
+      device_(this, &memory_space_),
       addressable_devices_({&device_}),
-      memory_space_(this, 0, &device_),
       memory_spaces_({&memory_space_}) {}
 
   int process_index() const override {
@@ -466,9 +466,9 @@ class KelvinPjRtClient : public xla::PjRtClient {
   // }
 
  private:
+  KelvinPjRtMemorySpace memory_space_;
   KelvinPjRtDevice device_;
   std::vector<xla::PjRtDevice*> addressable_devices_;
-  KelvinPjRtMemorySpace memory_space_;
   std::vector<xla::PjRtMemorySpace*> memory_spaces_;
 };
 

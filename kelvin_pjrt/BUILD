@@ -8,9 +8,15 @@ cc_library(
 )
 
 cc_library(
-    name = "kelvin_pjrt_memory_space",
-    srcs = ["kelvin_pjrt_memory_space.cc"],
-    hdrs = ["kelvin_pjrt_memory_space.h"],
+    name = "kelvin_pjrt_runtime",
+    srcs = [
+        "kelvin_pjrt_device.cc",
+        "kelvin_pjrt_memory_space.cc",
+    ],
+    hdrs = [
+        "kelvin_pjrt_device.h",
+        "kelvin_pjrt_memory_space.h",
+    ],
     deps = [
         "@xla//xla/pjrt:pjrt_client",
         "@xla//xla/tsl/platform:status",
@@ -19,24 +25,12 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "kelvin_pjrt_device",
-    srcs = ["kelvin_pjrt_device.cc"],
-    hdrs = ["kelvin_pjrt_device.h"],
-    deps = [
-        "@xla//xla/pjrt:pjrt_client",
-        "@xla//xla/tsl/platform:status",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
 cc_binary(
     name = "pjrt_c_api_kelvin_plugin.so",
     srcs = ["pjrt_c_api_kelvin_plugin.cc"],
     deps = [
-        ":kelvin_pjrt_device",
         ":kelvin_pjrt_executable",
-        ":kelvin_pjrt_memory_space",
+        ":kelvin_pjrt_runtime",
         "@xla//xla/pjrt/c:pjrt_c_api_hdrs",
         "@xla//xla/pjrt/c:pjrt_c_api_wrapper_impl",
         "@xla//xla/pjrt:pjrt_client",

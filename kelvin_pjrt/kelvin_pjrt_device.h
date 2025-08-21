@@ -9,6 +9,7 @@
 namespace kelvin {
 
 class KelvinPjRtClient;
+class KelvinPjRtMemorySpace;
 
 class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
  public:
@@ -40,8 +41,9 @@ class KelvinPjRtDeviceDescription : public xla::PjRtDeviceDescription {
 
 class KelvinPjRtDevice : public xla::PjRtDevice {
  public:
-  explicit KelvinPjRtDevice(xla::PjRtClient* client);
-  ~KelvinPjRtDevice() override = default;
+  KelvinPjRtDevice(xla::PjRtClient* client,
+                   KelvinPjRtMemorySpace* memory_space);
+  ~KelvinPjRtDevice() override;
 
   xla::PjRtClient* client() const override { return client_; }
   bool IsAddressable() const override;
@@ -75,6 +77,7 @@ class KelvinPjRtDevice : public xla::PjRtDevice {
 
  private:
   xla::PjRtClient* const client_;
+  KelvinPjRtMemorySpace* const memory_space_;
   KelvinPjRtDeviceDescription description_;
 };
 

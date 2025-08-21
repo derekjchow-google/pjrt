@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "kelvin_pjrt/kelvin_pjrt_memory_space.h"
 #include "xla/pjrt/pjrt_client.h"
 #include "xla/tsl/platform/status.h"
 
@@ -43,9 +44,15 @@ KelvinPjRtDeviceDescription::default_memory_space() const {
   return absl::UnimplementedError("default_memory_space Not implemented.");
 }
 
-KelvinPjRtDevice::KelvinPjRtDevice(xla::PjRtClient* client)
+KelvinPjRtDevice::KelvinPjRtDevice(xla::PjRtClient* client,
+                                   KelvinPjRtMemorySpace* memory_space)
     : client_(client),
-      description_(42, 0) {}
+      memory_space_(memory_space),
+      description_(42, 0) {
+  memory_space_->AddDevice(this);
+}
+
+KelvinPjRtDevice::~KelvinPjRtDevice() { memory_space_->RemoveDevice(this); }
 
 bool KelvinPjRtDevice::IsAddressable() const {
   std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
