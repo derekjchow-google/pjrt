@@ -52,6 +52,7 @@
 
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 
+#include "kelvin_pjrt/copied_pjrt_buffer.h"
 #include "kelvin_pjrt/kelvin_pjrt_device.h"
 #include "kelvin_pjrt/kelvin_pjrt_executable.h"
 #include "kelvin_pjrt/kelvin_pjrt_memory_space.h"
@@ -431,18 +432,9 @@ class KelvinPjRtClient : public xla::PjRtClient {
       xla::PjRtMemorySpace* memory_space,
       const xla::Layout* device_layout) override {
     std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-    std::cout << "  id=" << memory_space->id() << std::endl;
-    std::cout << "  type=" << type << std::endl;
-    std::cout << "  memory_space=" << reinterpret_cast<uintptr_t>(memory_space)
-              << std::endl;
-    std::cout << "  memory_space_="
-              << reinterpret_cast<uintptr_t>(&memory_space_) << std::endl;
-    std::cout << "  Dims=[ ";
-    for (int64_t dim : dims) {
-      std::cout << dim << " ";
-    }
-    std::cout << " ]" << std::endl;
-    return absl::UnimplementedError("BufferFromHostBuffer Unimplemented");
+    return std::make_unique<CopiedPjRtBuffer>(
+        this, &device_, memory_space, data,
+        std::move(on_done_with_host_buffer));
   }
 
   absl::StatusOr<std::unique_ptr<xla::PjRtBuffer>> CreateUninitializedBuffer(

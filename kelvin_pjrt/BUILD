@@ -8,6 +8,15 @@ cc_library(
 )
 
 cc_library(
+    name = "copied_pjrt_buffer",
+    srcs = ["copied_pjrt_buffer.cc"],
+    hdrs = ["copied_pjrt_buffer.h"],
+    deps = [
+        "@xla//xla/pjrt:pjrt_client",
+    ],
+)
+
+cc_library(
     name = "kelvin_pjrt_runtime",
     srcs = [
         "kelvin_pjrt_device.cc",
@@ -18,6 +27,7 @@ cc_library(
         "kelvin_pjrt_memory_space.h",
     ],
     deps = [
+        ":copied_pjrt_buffer",
         "@xla//xla/pjrt:pjrt_client",
         "@xla//xla/tsl/platform:status",
         "@com_google_absl//absl/strings",
