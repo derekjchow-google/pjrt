@@ -10,12 +10,14 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "xla/pjrt/pjrt_executable.h"
+#include "xla/shape.h"
 
 namespace kelvin {
 
 class KelvinPjRtExecutable : public xla::PjRtExecutable {
  public:
-  KelvinPjRtExecutable(std::string name, std::string object_code);
+  KelvinPjRtExecutable(std::string name, std::string object_code,
+                       std::vector<xla::Shape> output_shapes);
 
   ~KelvinPjRtExecutable() override = default;
 
@@ -54,6 +56,7 @@ class KelvinPjRtExecutable : public xla::PjRtExecutable {
  private:
   const std::string name_;
   const std::string object_code_;
+  const std::vector<xla::Shape> output_shapes_;
 };
 
 }  // namespace kelvin

@@ -52,6 +52,8 @@
 
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 
+#include "xla/mlir/utils/type_util.h"
+
 #include "kelvin_pjrt/copied_pjrt_buffer.h"
 #include "kelvin_pjrt/kelvin_pjrt_device.h"
 #include "kelvin_pjrt/kelvin_pjrt_executable.h"
@@ -274,6 +276,18 @@ class KelvinPjRtClient : public xla::PjRtClient {
       mlir::ModuleOp module, xla::CompileOptions options) override {
     module.dump();
 
+    auto main_fn = module.lookupSymbol<mlir::func::FuncOp>("main");
+    if (!main_fn) {
+      return absl::InvalidArgumentError("MLIR module must have a main function");
+    }
+    std::vector<xla::Shape> output_shapes;
+    if (auto status =
+            xla::ConvertMlirTypeToXlaShape(main_fn.getResultTypes(),
+                                           &output_shapes);
+        !status.ok()) {
+      return status;
+    }
+
     auto& context = *(module.getContext());
     mlir::registerAllDialects(context);
     mlir::registerLLVMDialectTranslation(context);
@@ -397,7 +411,8 @@ class KelvinPjRtClient : public xla::PjRtClient {
     auto name = module.getName();
     if (name) {
       return std::make_unique<KelvinPjRtExecutable>(
-          name.value().str(), std::move(object_file_content));
+          name.value().str(), std::move(object_file_content),
+          std::move(output_shapes));
     }
 
     return absl::UnimplementedError("Unimplemented Compile with MLIR Module");

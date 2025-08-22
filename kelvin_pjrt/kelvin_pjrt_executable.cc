@@ -9,9 +9,12 @@
 
 namespace kelvin {
 
-KelvinPjRtExecutable::KelvinPjRtExecutable(std::string name,
-                                           std::string object_code)
-    : name_(std::move(name)), object_code_(std::move(object_code)) {}
+KelvinPjRtExecutable::KelvinPjRtExecutable(
+    std::string name, std::string object_code,
+    std::vector<xla::Shape> output_shapes)
+    : name_(std::move(name)),
+      object_code_(std::move(object_code)),
+      output_shapes_(std::move(output_shapes)) {}
 
 absl::StatusOr<std::vector<std::shared_ptr<xla::HloModule>>>
 KelvinPjRtExecutable::GetHloModules() const {
@@ -22,7 +25,7 @@ KelvinPjRtExecutable::GetHloModules() const {
 absl::StatusOr<std::vector<xla::Shape>> KelvinPjRtExecutable::GetOutputShapes()
     const {
   std::cout << "Tuturu~ " << __PRETTY_FUNCTION__ << std::endl;
-  return absl::UnimplementedError("GetOutputShapes Not implemented.");
+  return output_shapes_;
 }
 
 absl::StatusOr<std::vector<std::vector<xla::PrimitiveType>>>
